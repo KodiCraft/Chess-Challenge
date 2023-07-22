@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 class MyBot : IChessBot
 {
     int[] pieceValues = { 10, 30, 30, 50, 90 };
+    int[] centerSquares = { (3 * 64 + 3), (3 * 64 + 4), (4 * 64 + 3), (4 * 64 + 4) };
 
     public Move Think(Board board, Timer timer)
     {
@@ -55,6 +56,21 @@ class MyBot : IChessBot
             score -= board.GetPieceList((PieceType)i, !weAreWhite).Count * pieceValues[i - 1];
         }
 
+        // Reward center control
+        foreach (int square in centerSquares)
+        {
+            if (board.SquareIsAttackedByOpponent(new Square(square)))
+            {
+                score += board.IsWhiteToMove == weAreWhite ? -10 : 10;
+            }
+            board.TrySkipTurn();
+            if (board.SquareIsAttackedByOpponent(new Square(square)))
+            {
+                score += board.IsWhiteToMove == weAreWhite ? 10 : -10;
+            }
+            board.UndoSkipTurn();
+        }
+
         // Find the amount of legal moves that we have
         if(board.IsWhiteToMove == weAreWhite)
         {
@@ -73,7 +89,7 @@ class MyBot : IChessBot
         if (depth == 0)
         {
             int score = Score(board, weAreWhite);
-            Console.WriteLine("Evaluating board " + board.GetFenString() + ", score is " + score);
+            //Console.WriteLine("Evaluating board " + board.GetFenString() + ", score is " + score);
             return score;
         }
 
@@ -84,6 +100,8 @@ class MyBot : IChessBot
         int bestMoveScore = (board.IsWhiteToMove == weAreWhite) ? int.MinValue : int.MaxValue;
         foreach (var move in moves)
         {
+            Console.WriteLine("Evaluating move " + move.ToString() + " (ply: " + board.PlyCount + ")");
+            Console.WriteLine("Board: " + board.GetFenString());
             board.MakeMove(move);
             int score = Evaluate(board, depth - 1, weAreWhite);
             board.UndoMove(move);
